@@ -1,5 +1,7 @@
 (* ::Package:: *)
 
-ImportExport`RegisterExport[
- "SAM",
+Begin["System`Convert`SAMDump"]
+
+ImportExport`RegisterImport[
+  "SAM"
 ]
