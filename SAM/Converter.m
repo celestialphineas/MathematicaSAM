@@ -9,7 +9,7 @@
 (*Sequence Alignment/Map format converter for Mathematica *)
 
 
-(* :Context: Utilities`Package` *)
+(* :Context: System`Convert`SAMDump` *)
 (* :Author: YIN Yehang @ Zhejiang University *)
 (* :Summary: SAM (Sequence Alignment/Map format) Mathematica Converter *)
 (* :Package Version: 0.1 *)
@@ -55,7 +55,7 @@ THE SOFTWARE.
 (*BEGIN CONVERTER CONTEXT*)
 
 
-Begin["System`Convert`SAMDump"]
+Begin["System`Convert`SAMDump`"];
 
 
 (* ::Section:: *)
@@ -437,4 +437,4 @@ Module[ {strm, lines, rawHead, rawData, head, data},
 (*END CONVERTER CONTEXT*)
 
 
-End[]
+End[];
