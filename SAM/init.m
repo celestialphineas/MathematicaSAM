@@ -2,7 +2,7 @@
 (* It will register the SAM importer & exporter *)
 Once@Module[ {packageName},
   packageName = $Input ~StringDrop~ -2;
-  Quiet@Get[packageName<>"`Converter.m"];
-  Quiet@Get[packageName<>"`Import.m"];
-  Quiet@Get[packageName<>"`Export.m"];
+  Quiet@Get[packageName<>"/Converter.m"];
+  Quiet@Get[packageName<>"/Import.m"];
+  Quiet@Get[packageName<>"/Export.m"];
 ]

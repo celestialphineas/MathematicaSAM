@@ -71,7 +71,7 @@ Begin["System`Convert`SAMDump`"];
 
 metaTagDict = {
   "@HD" -> "HeaderLine",
-  "@SQ" -> "RefSequenceDict", 
+  "@SQ" -> "ReferenceSequences", 
   "@RG" -> "ReadGroup",
   "@PG" -> "Program",
   "@CO" -> "Comment"
