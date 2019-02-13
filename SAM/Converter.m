@@ -283,7 +283,7 @@ Module[ {cond, lines},
     (* CO *)
     {metaTagDict[[-1, 2]], x__} :>
       (metaTagDict[[-1, 2]] ->
-        Fold[#1 <> "\n" <> #2 &, Map[Fold[#1 <> "\t" <> #2 &, #] &, x, {1}]]
+        StringDrop[StringJoin[# <> "\n" & /@StringPart[StringJoin/@Map[# <> "\t" &, x, {2}], ;;-1]], -1]
       )
   }
 ]
@@ -295,7 +295,7 @@ flagDefinitions[[Flatten[Position[Reverse@IntegerDigits[BitAnd[flag, 4095], 2], 
 
 
 (* TODO: This part needs to be finished *)
-(* Compile the optional arrays to human/machine readable format *)
+(* Dump the optional arrays to human/machine readable format *)
 DumpArray[array_List] := array
 
 
@@ -421,15 +421,117 @@ Module[ {temp, list, result = {}},
 
 (* Import function *)
 ImportSAM[filename_String, options___?OptionQ] :=
-Module[ {strm, lines, rawHead, rawData, head, data},
+Module[ {strm, lines, rawHead, rawData},
   strm = OpenRead[filename, Method -> {"File", CharacterEncoding -> "UTF8"}];
   lines = ReadList[filename, String];
   Closed[strm];
   rawHead = Select[lines, StringMatchQ[Verbatim["@"]~~___]];
   rawData = lines[[Length[rawHead] + 1 ;;]];
-  head = DumpSAMHeader[rawHead];
-  data = DumpAlignment /@ rawData;
-  {"Header" -> head, "Data" -> data}
+  {
+    "Header"  :> DumpSAMHeader[rawHead],
+    "Data"    :> DumpAlignment /@ rawData,
+    "Everything" :> {DumpSAMHeader[rawHead], DumpAlignment /@ rawData}
+  }
+]
+
+
+(* ::Section::Closed:: *)
+(*Export*)
+
+
+CompileHeader[head_List] :=
+Module[ {headlist},
+  headlist = Apply[List, head, Infinity] /. {
+    {metaTagDict[[1, 2]], keyvals__} :> 
+      {
+        metaTagDict[[1, 1]],
+        {Fold[#1 <> ":" <> #2 &, #] & /@ (Select[keyvals, headerDict[[All, 2]]~MemberQ~#[[1]] &] /. Reverse /@ headerDict)}
+      },
+    {metaTagDict[[2, 2]], list__} :>
+      {
+        metaTagDict[[2, 1]],
+        (Fold[#1 <> ":" <> ToString[#2] &, #] & /@ (Select[#, sqDict[[All, 2]]~MemberQ~#[[1]] &] /. Reverse /@ sqDict)) & /@ list
+      },
+    {metaTagDict[[3, 2]], list__} :> 
+      {
+        metaTagDict[[3, 1]],
+        (Fold[#1 <> ":" <> ToString[#2] &, #] & /@ (Select[#, rgDict[[All, 2]]~MemberQ~#[[1]] &] /. Reverse /@ rgDict)) & /@ list
+      },
+    {metaTagDict[[4, 2]], list__} :>
+      {
+        metaTagDict[[4, 1]],
+        (Fold[#1 <> ":" <> ToString[#2] &, #] & /@ (Select[#, pgDict[[All, 2]]~MemberQ~#[[1]] &] /. Reverse /@ pgDict)) & /@ list
+      },
+    {metaTagDict[[-1, 2]], comment__} :>
+      {
+        metaTagDict[[-1, 1]],
+        List /@ StringSplit[comment, "\n"]
+      }
+  };
+
+  (* Concat the result string *) 
+  Flatten[Map[Function[{x}, x~Prepend~#[[1]]], #[[2]]] & /@ 
+    Select[headlist, metaTagDict[[All, 1]]~MemberQ~#[[1]] &] /. 
+      {{x__String} :> Fold[#1 <> "\t" <> #2 &, {x}]}
+  ]
+]
+
+
+(* Compile the flag *)
+CompileFlag[flaglist_List] := 
+Total[2^(# - 1) & /@ 
+  Flatten[Position[flagDefinitions, #] & /@ 
+    Intersection[flaglist, flagDefinitions]]]
+
+
+
+(* TODO: This part needs to be finished *)
+(* Compile the imported format to the original *)
+CompileArray[array_List] := array
+
+
+CompileOptional[optional_Rule] :=
+If[ Not@MatchQ[optional, _String -> {"Type" -> _String, "Value" -> _}], 
+  Message[Export::badsamoptional, optional]; Return[$Failed], 
+  optional /. {(tag_String -> {"Type" -> type_String, "Value" -> val_}) :>
+    {
+      tag, type /. Reverse /@ typeDict, 
+      Switch[type /. Reverse /@ typeDict,
+        "A", ToString@val,
+        "i", ToString@val,
+        "f", ToString@val,
+        "Z", ToString@val,
+        "H", ToUpperCase@IntegerString[val, 16],
+        "B", If[ # == $Failed,
+              Message[Export::badsamoptional, val]; Return[$Failed],
+              #]& @CompileArray[val]
+        ]
+    }
+  } // #[[1]] <> ":" <> #[[2]] <> ":" <> #[[3]] &
+]
+
+
+CompileAlignment[align_List] :=
+Module[ {result},
+  result = lineDefinitions /. align;
+  result[[2]] = CompileFlag[result[[2]]];
+  result[[3]] = result[[3]] /. {_Missing -> "*"};
+  result[[6]] = result[[6]] /. {_Missing -> "*"};
+  result[[7]] = If[result[[3]] === result[[7]], "=", result[[7]] /. {_Missing -> "*"}];
+  result[[12]] = If[ MemberQ[#, $Failed], Return[$Failed], #] & [CompileOptional /@ result[[12]]];
+  StringDrop[StringJoin[# <> "\t" & /@ (ToString /@ Flatten[result])], -1]
+]
+
+
+ExportSAM[filename_, data_, options___?OptionQ] :=
+Module[ {strm, header, alignments},
+  header = CompileHeader[data[[1]]];
+  If[ header === $Failed || !MatchQ[header, {__String}], Message[Export::errelem, "header", "SAM"]; Return[$Failed] ];
+  alignments = CompileAlignment /@ data[[2]];
+  If[ MemberQ[alignments, $Failed] || !MatchQ[alignments, {__String}], Message[Export::errelem, "data", "SAM"]; Return[$Failed] ];
+  strm = OpenWrite[filename, CharacterEncoding -> "UTF8"];
+  WriteString[strm, StringJoin[#<>"\n"&/@Join[header, alignments]]];
+  Close[strm];
 ]
 
 

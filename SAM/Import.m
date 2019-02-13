@@ -7,7 +7,7 @@ ImportExport`RegisterImport[
   "SAM",
   ImportSAM,
   "AvailableElements" -> {"Header", "Data"},
-  "DefaultElement"    -> "Data"
+  "DefaultElement"    -> "Everything"
 ]
 
 
