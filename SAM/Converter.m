@@ -420,10 +420,10 @@ Module[ {temp, list, result = {}},
 
 
 (* Import function *)
-ImportSAM[filename_InputStream, options___?OptionQ] :=
+ImportSAM[filename_String, options___?OptionQ] :=
 Module[ {strm, lines, rawHead, rawData, head, data},
   strm = OpenRead[filename, Method -> {"File", CharacterEncoding -> "UTF8"}];
-  lines = ReadList[file, String];
+  lines = ReadList[filename, String];
   Closed[strm];
   rawHead = Select[lines, StringMatchQ[Verbatim["@"]~~___]];
   rawData = lines[[Length[rawHead] + 1 ;;]];
