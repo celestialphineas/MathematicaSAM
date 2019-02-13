@@ -2,6 +2,14 @@
 
 Begin["System`Convert`SAMDump"]
 
+
 ImportExport`RegisterImport[
-  "SAM"
+  "SAM",
+  ImportSAM,
+  "FunctionChannels"  -> {"Streams"},
+  "AvailableElements" -> {"Header", "Data"},
+  "DefaultElement"    -> "Data"
 ]
+
+
+End[]
